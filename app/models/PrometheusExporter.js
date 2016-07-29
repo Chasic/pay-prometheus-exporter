@@ -26,6 +26,20 @@ class PrometheusExporter extends events.EventEmitter {
 
     init () {
 
+        // reset data optionally
+        const reset = process.env.RESET_PROFILER || false;
+
+        if (reset) {
+            co(this._resetProfiler.bind(this))
+                .then(() => {
+                    this._start();
+                });
+        } else {
+            this._start();
+        }
+    }
+
+    _start () {
         // log.i(`Initializing with: sumKey: ${this.sumKey}, lbmKey: ${this.lbmKey}`);
         co(this.aggregateData.bind(this)).catch((err) => {
             log.e(`Err:${err}`);
@@ -37,6 +51,13 @@ class PrometheusExporter extends events.EventEmitter {
             });
         }, this.sleepInterval);
         // log.i('Initialized');
+    }
+
+    *_resetProfiler () {
+        const keys = yield this.redis.keys(
+            `${this.profilePrefix}profile*`);
+
+        yield this.redis.del(keys);
     }
 
     /**
